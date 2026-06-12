@@ -38,22 +38,20 @@ hdu watch /var   # live-updating TUI
 ```bash
 git clone https://github.com/person134/hdu.git
 cd hdu
-cargo build --release
+sudo ./install-uninstall/install.sh
 ```
 The binary will be at `target/release/hdu` (or `hdu.exe` on Windows).
 
-To install it system-wide (or uninstall later):
+To uninstall later:
 
 **Linux / macOS:**
 ```bash
-sudo ./install-uninstall/install.sh            # install
-sudo ./install-uninstall/install.sh --uninstall # uninstall
+sudo ./install-uninstall/install.sh --uninstall
 ```
 
 **Windows:** Run as administrator:
 ```batch
-install-uninstall\install.bat                  # install
-install-uninstall\install.bat --uninstall      # uninstall
+install-uninstall\install.bat --uninstall
 ```
 
 ## Usage
