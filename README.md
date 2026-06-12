@@ -35,21 +35,31 @@ hdu watch /var   # live-updating TUI
 - Rust 1.56+ ([install](https://rustup.rs/))
 
 ### Install
+
+**Linux / macOS:**
 ```bash
 git clone https://github.com/person134/hdu.git
 cd hdu
 sudo ./install-uninstall/install.sh
 ```
+
+**Windows (Run as Administrator):**
+```batch
+git clone https://github.com/person134/hdu.git
+cd hdu
+install-uninstall\install.bat
+```
+
 The binary will be at `target/release/hdu` (or `hdu.exe` on Windows).
 
-To uninstall later:
+### Uninstall
 
 **Linux / macOS:**
 ```bash
 sudo ./install-uninstall/install.sh --uninstall
 ```
 
-**Windows:** Run as administrator:
+**Windows (Run as Administrator):**
 ```batch
 install-uninstall\install.bat --uninstall
 ```
