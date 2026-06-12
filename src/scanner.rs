@@ -2,6 +2,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+const VIRTUAL_FS_ROOTS: &[&str] = &["/proc", "/sys", "/dev"];
+
+fn on_virtual_fs(path: &Path) -> bool {
+    let Ok(abs) = path.canonicalize() else {
+        return false;
+    };
+    let s = abs.to_string_lossy();
+    VIRTUAL_FS_ROOTS
+        .iter()
+        .any(|root| s == *root || s.starts_with(&format!("{}/", root)))
+}
+
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub path: PathBuf,
@@ -64,6 +76,22 @@ pub fn scan(path: &Path) -> std::io::Result<Entry> {
                                 is_dir: false,
                                 children: Vec::new(),
                                 item_count: 1,
+                                modified: m.modified().ok(),
+                            });
+                        }
+                        continue;
+                    }
+                    if child_path.is_dir() && on_virtual_fs(&child_path) {
+                        if let Ok(m) = fs::symlink_metadata(&child_path) {
+                            let name = child.file_name().to_string_lossy().to_string();
+                            total_items += 1;
+                            entry.children.push(Entry {
+                                path: child_path,
+                                name,
+                                size: 0,
+                                is_dir: true,
+                                children: Vec::new(),
+                                item_count: 0,
                                 modified: m.modified().ok(),
                             });
                         }
