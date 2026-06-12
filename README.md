@@ -1,6 +1,6 @@
 # Hdu
 
-A lightweight cross-platform disk usage visualizer for Windows, Linux, and macOS. Inspired by WizTree, but CLI-based.
+A lightweight cross-platform CLI-based disk usage visualizer for Windows, Linux, and macOS.
 
 ```
 hdu              # interactive TUI (default, scans current directory)
