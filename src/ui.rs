@@ -8,13 +8,14 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Cell, Clear, Paragraph, Row, Table, TableState, Wrap},
+    widgets::{Block, BorderType, Borders, Cell, Clear, Gauge, Paragraph, Row, Table, TableState, Wrap},
     Frame, Terminal,
 };
 
 use crate::backend::Platform;
 use crate::config::Config;
 use crate::scanner::{self, Entry, SortField, SortOrder};
+use crate::system::{self, DiskUsage};
 
 const THEMES: &[(&str, fn() -> Theme)] = &[
     ("dark", Theme::dark),
@@ -246,6 +247,7 @@ pub struct AppUi {
     notification: Option<(String, Instant)>,
     col_starts: Vec<u16>,
     scanning: bool,
+    disks: Vec<DiskUsage>,
 }
 
 impl AppUi {
@@ -292,6 +294,7 @@ impl AppUi {
             notification: None,
             col_starts: Vec::new(),
             scanning: true,
+            disks: system::get_disk_usage(),
         };
         let _ = app.rescan();
         app
@@ -366,6 +369,7 @@ impl AppUi {
             }
 
             if self.last_tick.elapsed() >= Duration::from_millis(self.refresh_rate) {
+                self.disks = system::get_disk_usage();
                 let _ = self.rescan();
                 self.last_tick = Instant::now();
             }
@@ -632,7 +636,8 @@ impl AppUi {
     }
 
     fn table_top(&self) -> u16 {
-        4
+        // 1 (outer border) + 3 (info gauge) + 1 (table block border) + 1 (table header) = 6
+        6
     }
 
     fn header_text(&self) -> String {
@@ -746,26 +751,73 @@ impl AppUi {
     }
 
     fn render_info_gauge(&self, f: &mut Frame, area: Rect) {
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(100)])
-            .split(area);
-
         let total = self.current_dir_size();
         let item_count = self.root.item_count;
 
-        let text = format!(
-            " {}  {} items  {} ",
-            self.root.name,
-            item_count,
-            format_bytes(total),
-        );
-        let block = Block::default()
-            .title(text)
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(self.theme.border));
-        f.render_widget(block, chunks[0]);
+        let disk = self.disks.iter().find(|d| {
+            let p = self.scan_path.display().to_string();
+            let mp = d.mount_point.trim_end_matches('/');
+            p == mp || p.starts_with(mp)
+        });
+
+        if let Some(disk) = disk {
+            let chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+                .split(area);
+
+            let dir_info = format!(
+                " {}  {} items  {} ",
+                self.root.name,
+                item_count,
+                format_bytes(total),
+            );
+            let dir_block = Block::default()
+                .title(dir_info)
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(self.theme.border));
+            f.render_widget(dir_block, chunks[0]);
+
+            let used = disk.used_bytes;
+            let total_bytes = disk.total_bytes;
+            let pct = if total_bytes > 0 {
+                (used as f64 / total_bytes as f64 * 100.0) as u16
+            } else {
+                0
+            };
+            let gauge_label = format!(
+                " {}  {}%  {}/{} ",
+                disk.mount_point,
+                pct,
+                format_bytes(used),
+                format_bytes(total_bytes),
+            );
+            let gauge_block = Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(self.theme.border));
+            let inner = gauge_block.inner(chunks[1]);
+            let gauge = Gauge::default()
+                .gauge_style(Style::default().fg(self.theme.dir))
+                .percent(pct)
+                .label(gauge_label);
+            f.render_widget(gauge_block, chunks[1]);
+            f.render_widget(gauge, inner);
+        } else {
+            let text = format!(
+                " {}  {} items  {} ",
+                self.root.name,
+                item_count,
+                format_bytes(total),
+            );
+            let block = Block::default()
+                .title(text)
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(self.theme.border));
+            f.render_widget(block, area);
+        }
     }
 
     fn render_entry_table(&mut self, f: &mut Frame, area: Rect) {
