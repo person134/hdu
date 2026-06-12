@@ -473,13 +473,18 @@ impl AppUi {
     fn go_up(&mut self) {
         if !self.current_stack.is_empty() {
             self.current_stack.pop();
-        } else if let Some(parent) = self.scan_path.parent() {
-            if parent.as_os_str().is_empty() {
-                return;
-            }
-            self.scan_path = parent.to_path_buf();
         } else {
-            return;
+            let abs = if self.scan_path.is_relative() {
+                std::env::current_dir()
+                    .map(|cwd| cwd.join(&self.scan_path))
+                    .unwrap_or_else(|_| self.scan_path.clone())
+            } else {
+                self.scan_path.clone()
+            };
+            match abs.parent() {
+                Some(parent) if parent != abs => self.scan_path = parent.to_path_buf(),
+                _ => return,
+            }
         }
         self.table_state.select(Some(0));
         self.detail_scroll = 0;
