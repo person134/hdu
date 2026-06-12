@@ -42,16 +42,19 @@ cargo build --release
 ```
 The binary will be at `target/release/hdu` (or `hdu.exe` on Windows).
 
-To install it system-wide (or uninstall later), run the script for your OS:
+To install it system-wide (or uninstall later):
 
 **Linux / macOS:**
 ```bash
-cd install-uninstall
-chmod +x install.sh
-./install.sh
+sudo ./install-uninstall/install.sh            # install
+sudo ./install-uninstall/install.sh --uninstall # uninstall
 ```
 
-**Windows:** Right-click `install.bat` and select **Run as administrator**.
+**Windows:** Run as administrator:
+```batch
+install-uninstall\install.bat                  # install
+install-uninstall\install.bat --uninstall      # uninstall
+```
 
 ## Usage
 
