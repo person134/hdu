@@ -248,6 +248,7 @@ pub struct AppUi {
     col_starts: Vec<u16>,
     scanning: bool,
     disks: Vec<DiskUsage>,
+    last_click: Option<(Instant, u16, u16)>,
 }
 
 impl AppUi {
@@ -295,6 +296,7 @@ impl AppUi {
             col_starts: Vec::new(),
             scanning: true,
             disks: system::get_disk_usage(),
+            last_click: None,
         };
         let _ = app.rescan();
         app
@@ -370,7 +372,6 @@ impl AppUi {
 
             if self.last_tick.elapsed() >= Duration::from_millis(self.refresh_rate) {
                 self.disks = system::get_disk_usage();
-                let _ = self.rescan();
                 self.last_tick = Instant::now();
             }
 
@@ -472,11 +473,18 @@ impl AppUi {
     fn go_up(&mut self) {
         if !self.current_stack.is_empty() {
             self.current_stack.pop();
-            self.table_state.select(Some(0));
-            self.detail_scroll = 0;
-            self.scanning = true;
-            let _ = self.rescan();
+        } else if let Some(parent) = self.scan_path.parent() {
+            if parent.as_os_str().is_empty() {
+                return;
+            }
+            self.scan_path = parent.to_path_buf();
+        } else {
+            return;
         }
+        self.table_state.select(Some(0));
+        self.detail_scroll = 0;
+        self.scanning = true;
+        let _ = self.rescan();
     }
 
     fn selected_entry(&self) -> Option<&Entry> {
@@ -589,12 +597,22 @@ impl AppUi {
                     }
                 }
 
-                if mouse.row >= table_data_start
-                    && mouse.row < table_data_start + self.current_entries.len() as u16
-                {
+                let row_clicked = mouse.row >= table_data_start
+                    && mouse.row < table_data_start + self.current_entries.len() as u16;
+
+                if row_clicked {
                     let idx = (mouse.row - table_data_start) as usize;
                     if idx < self.current_entries.len() {
                         self.table_state.select(Some(idx));
+
+                        let is_double = self.last_click.map_or(false, |(t, r, _)| {
+                            t.elapsed() < Duration::from_millis(400) && r == mouse.row
+                        });
+                        self.last_click = Some((Instant::now(), mouse.row, mouse.column));
+
+                        if is_double {
+                            self.enter_dir();
+                        }
                     }
                 }
             }
